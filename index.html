@@ -1,0 +1,186 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+  <title>LIFF 測試：取得 UID / ID Token</title>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      padding: 24px;
+      line-height: 1.6;
+      background: #f7f7f7;
+      color: #222;
+    }
+
+    .card {
+      max-width: 720px;
+      margin: 0 auto;
+      background: #fff;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 18px rgba(0, 0, 0, 0.08);
+    }
+
+    h1 {
+      font-size: 22px;
+      margin-bottom: 12px;
+    }
+
+    button {
+      width: 100%;
+      padding: 12px 16px;
+      margin: 8px 0;
+      border: 0;
+      border-radius: 10px;
+      background: #06c755;
+      color: white;
+      font-size: 16px;
+      cursor: pointer;
+    }
+
+    button.secondary {
+      background: #333;
+    }
+
+    button.danger {
+      background: #b00020;
+    }
+
+    pre {
+      white-space: pre-wrap;
+      word-break: break-all;
+      background: #f0f0f0;
+      padding: 12px;
+      border-radius: 10px;
+      font-size: 13px;
+    }
+
+    .label {
+      font-weight: 700;
+      margin-top: 16px;
+    }
+
+    .hint {
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="card">
+    <h1>LIFF 測試頁</h1>
+    <p class="hint">這個頁面只用來測試取得 LINE UID 與 ID Token，不會連到公司系統。</p>
+
+    <button id="btnGetProfile">取得 UID / Profile</button>
+    <button id="btnGetIdToken" class="secondary">取得 ID Token</button>
+    <button id="btnOpenExternal" class="secondary">測試外開瀏覽器</button>
+    <button id="btnLogout" class="danger">登出 LIFF</button>
+
+    <div class="label">目前狀態</div>
+    <pre id="status">尚未初始化</pre>
+
+    <div class="label">Profile / UID</div>
+    <pre id="profileResult">尚未取得</pre>
+
+    <div class="label">ID Token</div>
+    <pre id="tokenResult">尚未取得</pre>
+  </div>
+
+  <script src="https://static.line-scdn.net/liff/edge/2/sdk.js"></script>
+
+  <script>
+    // TODO：建立 LIFF App 後，把這裡換成你的 LIFF ID
+    const LIFF_ID = "請換成你的 LIFF ID";
+
+    const statusEl = document.getElementById("status");
+    const profileEl = document.getElementById("profileResult");
+    const tokenEl = document.getElementById("tokenResult");
+
+    function showStatus(message) {
+      statusEl.textContent = message;
+    }
+
+    async function initLiff() {
+      try {
+        await liff.init({ liffId: LIFF_ID });
+
+        const info = {
+          isLoggedIn: liff.isLoggedIn(),
+          isInClient: liff.isInClient(),
+          os: liff.getOS(),
+          language: liff.getLanguage(),
+          liffVersion: liff.getVersion()
+        };
+
+        showStatus(JSON.stringify(info, null, 2));
+
+        if (!liff.isLoggedIn()) {
+          liff.login({
+            redirectUri: window.location.href
+          });
+          return;
+        }
+      } catch (error) {
+        showStatus("LIFF 初始化失敗：\n" + error.message);
+      }
+    }
+
+    async function getProfile() {
+      try {
+        const profile = await liff.getProfile();
+
+        profileEl.textContent = JSON.stringify({
+          userId: profile.userId,
+          displayName: profile.displayName,
+          pictureUrl: profile.pictureUrl,
+          statusMessage: profile.statusMessage
+        }, null, 2);
+      } catch (error) {
+        profileEl.textContent = "取得 Profile 失敗：\n" + error.message;
+      }
+    }
+
+    function getIdToken() {
+      try {
+        const idToken = liff.getIDToken();
+
+        if (!idToken) {
+          tokenEl.textContent = "沒有取得 ID Token。請確認 LIFF scope 是否有勾選 openid。";
+          return;
+        }
+
+        tokenEl.textContent = idToken;
+      } catch (error) {
+        tokenEl.textContent = "取得 ID Token 失敗：\n" + error.message;
+      }
+    }
+
+    function openExternal() {
+      const url = "https://example.com/";
+
+      liff.openWindow({
+        url,
+        external: true
+      });
+    }
+
+    function logout() {
+      if (liff.isLoggedIn()) {
+        liff.logout();
+        location.reload();
+      }
+    }
+
+    document.getElementById("btnGetProfile").addEventListener("click", getProfile);
+    document.getElementById("btnGetIdToken").addEventListener("click", getIdToken);
+    document.getElementById("btnOpenExternal").addEventListener("click", openExternal);
+    document.getElementById("btnLogout").addEventListener("click", logout);
+
+    initLiff();
+  </script>
+</body>
+</html>
